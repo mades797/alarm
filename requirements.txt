@@ -1,0 +1,4 @@
+evdev==1.9.2
+Mock.GPIO==0.1.10
+pylint==3.3.7
+pytest==8.4.1
