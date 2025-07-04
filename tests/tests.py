@@ -3,7 +3,17 @@ Alarm monitoring tests module
 """
 from unittest.mock import call, patch, MagicMock
 
-from main import arm, detect_mouse_movement, monitor, set_alarm, set_up, ARM_TIME, RELAY_PIN, LED_PIN
+from main import (
+    arm,
+    detect_mouse_movement,
+    handle_termination,
+    monitor,
+    set_alarm,
+    set_up,
+    ARM_TIME,
+    RELAY_PIN,
+    LED_PIN,
+)
 
 @patch('main.InputDevice')
 def test_detect_mouse_movement(mock_intput_device):
@@ -70,3 +80,14 @@ def test_monitor(mock_gpio):
         assert mock_set_alarm.call_count == 3
         mock_gpio.output.assert_has_calls([call(RELAY_PIN, mock_gpio.LOW), call(LED_PIN, mock_gpio.LOW)])
         mock_gpio.cleanup.assert_called()
+
+
+@patch('main.clean_up')
+@patch('main.sys')
+def test_handle_termination(mock_sys, mock_cleanup) -> None:
+    """
+    Test for `handle_termination`
+    """
+    handle_termination(MagicMock(), MagicMock())
+    mock_cleanup.assert_called()
+    mock_sys.exit.assert_called_with(0)
