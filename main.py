@@ -17,7 +17,8 @@ from systemd import journal
 
 ALARM_DURATION = 5  # seconds
 ALARM_SNOOZE = 1  # seconds
-ARM_FLASH_TIME = 0.5  # seconds
+FAST_FLASH_TIME = 0.25  # seconds
+SLOW_FLASH_TIME = 0.65  # seconds
 ARM_TIME = 30  # seconds
 RELAY_PIN = 13
 LED_PIN = 11
@@ -42,13 +43,41 @@ logger.addHandler(journal.JournalHandler())
 logger.setLevel(get_logging_level())
 
 
+def flash(interval: float, duration: int | None = None) -> None:
+    """
+    Flash the LED
+
+    :param interval: Interval in seconds between flashes
+    :param duration: Duration in seconds of the flashing. If not specified, will flash forever
+    :return:
+    """
+    start_time = time.time()
+    while True:
+        try:
+            GPIO.output(LED_PIN, GPIO.HIGH)
+            time.sleep(interval)
+            GPIO.output(LED_PIN, GPIO.LOW)
+            time.sleep(interval)
+            if duration is not None and (time.time() - start_time) >= duration:
+                break
+        except KeyboardInterrupt:
+            logger.info('Caught CTRL-C')
+            clean_up()
+            break
+
+
 def detect_mouse_movement() -> None:
     """
     Detect a mouse movement. This function blocks until an event is received
 
     :return:
     """
-    dev = InputDevice('/dev/input/by-id/usb-1bcf_USB_Optical_Mouse-event-mouse')
+    try:
+        dev = InputDevice('/dev/input/by-id/usb-1bcf_USB_Optical_Mouse-event-mouse')
+    except FileNotFoundError:
+        logger.error('No input device')
+        flash(SLOW_FLASH_TIME)
+        return
     for event in dev.read_loop():
         logger.info('Detected movement')
         if event.value != 0:
@@ -89,11 +118,7 @@ def arm() -> None:
     :return:
     """
     logger.info('Alarm arming started')
-    for _ in range(int(ARM_TIME / 2)):
-        GPIO.output(LED_PIN, GPIO.HIGH)
-        time.sleep(ARM_FLASH_TIME)
-        GPIO.output(LED_PIN, GPIO.LOW)
-        time.sleep(ARM_FLASH_TIME)
+    flash(FAST_FLASH_TIME, ARM_TIME)
     GPIO.output(LED_PIN, GPIO.HIGH)
     logger.info('Alarm arming finished')
 
@@ -139,7 +164,7 @@ def handle_termination(_signum, _frame) -> None:
     sys.exit(0)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     logger.info('Starting alarm')
     signal.signal(signal.SIGTERM, handle_termination)
     set_up()
