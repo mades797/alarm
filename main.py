@@ -3,9 +3,7 @@
 Alarm monitoring main module
 """
 import logging
-import os
 import signal
-import sys
 import time
 
 from evdev import InputDevice
@@ -15,6 +13,8 @@ except (RuntimeError, ModuleNotFoundError):
     from Mock import GPIO
 from systemd import journal
 
+from common import get_logging_level, handle_termination
+
 ALARM_DURATION = 5  # seconds
 ALARM_SNOOZE = 1  # seconds
 FAST_FLASH_TIME = 0.25  # seconds
@@ -22,21 +22,6 @@ SLOW_FLASH_TIME = 0.65  # seconds
 ARM_TIME = 30  # seconds
 RELAY_PIN = 13
 LED_PIN = 11
-
-
-def get_logging_level() -> int:
-    """
-    Get logging level
-
-    :return:
-    """
-    return {
-        'INFO': logging.INFO,
-        'DEBUG': logging.DEBUG,
-        'WARNING': logging.WARNING,
-        'ERROR': logging.ERROR,
-        'CRITICAL': logging.CRITICAL,
-    }[os.environ.get('ALARM_LOG_LEVEL', 'INFO').upper()]
 
 logger = logging.getLogger('alarm')
 logger.addHandler(journal.JournalHandler())
@@ -151,7 +136,7 @@ def monitor() -> None:
             break
 
 
-def handle_termination(_signum, _frame) -> None:
+def _handle_termination(_signum, _frame) -> None:
     """
     Handle SIGTERM signal.
 
@@ -160,13 +145,12 @@ def handle_termination(_signum, _frame) -> None:
     :return:
     """
     logger.info('Received SIGTERM')
-    clean_up()
-    sys.exit(0)
+    handle_termination(clean_up)
 
 
 if __name__ == '__main__':  # pragma: no cover
     logger.info('Starting alarm')
-    signal.signal(signal.SIGTERM, handle_termination)
+    signal.signal(signal.SIGTERM, _handle_termination)
     set_up()
     arm()
     monitor()
