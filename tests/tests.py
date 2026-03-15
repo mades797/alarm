@@ -1,8 +1,12 @@
 """
 Alarm monitoring tests module
 """
+# pylint: disable=R0917 (too-many-positional-arguments)
+# pylint: disable=R0913 (too-many-arguments)
 from unittest.mock import call, patch, MagicMock
 from unittest import TestCase
+
+from Mock import GPIO
 
 from common import handle_termination
 from controller import (
@@ -18,7 +22,7 @@ from controller import (
 from main import (
     _handle_termination as main_handle_termination,
     arm,
-    detect_mouse_movement,
+    detect_switch_trigger,
     flash,
     monitor,
     set_alarm,
@@ -28,36 +32,34 @@ from main import (
     ARM_TIME,
     RELAY_PIN,
     LED_PIN,
+    SWITCH_PIN,
 )
+
 
 class AlarmTest(TestCase):
     """
     Test class for `main`
     """
 
-    @patch('main.InputDevice')
-    def test_detect_mouse_movement(self, mock_intput_device):
+    @patch('main.GPIO')
+    def test_detect_mouse_movement(self, mock_gpio):
         """
-        Test for `detect_mouse_movement`
+        Test for `detect_switch_trigger`. On the third iteration, simulate a pin value of LOW.
         """
-        mock_device = MagicMock()
-        mock_intput_device.return_value = mock_device
-        mock_event = MagicMock(value=5)
-        mock_device.read_loop = MagicMock()
-        mock_device.read_loop.return_value.__iter__.return_value = iter([mock_event])
-        detect_mouse_movement()
+        mock_gpio.LOW = 0
+        mock_gpio.HIGH = 1
+        gpio_input_check_count = 0
 
+        def gpio_intput_side_effect(_):
+            nonlocal gpio_input_check_count
+            gpio_input_check_count += 1
+            if gpio_input_check_count >= 3:
+                return GPIO.LOW
+            return GPIO.HIGH
 
-    @patch('main.flash')
-    @patch('main.InputDevice')
-    def test_detect_mouse_movement_error(self, mock_intput_device, mock_flash):
-        """
-        Test for `detect_mouse_movement` when the device is not found
-        """
-        mock_intput_device.side_effect = FileNotFoundError
-        detect_mouse_movement()
-        mock_flash.assert_called_with(SLOW_FLASH_TIME)
-
+        mock_gpio.input.side_effect = gpio_intput_side_effect
+        detect_switch_trigger()
+        mock_gpio.input.assert_has_calls([call(SWITCH_PIN)] * 3)
 
     @patch('main.GPIO')
     @patch('main.time')
@@ -67,7 +69,6 @@ class AlarmTest(TestCase):
         """
         set_alarm()
         mock_gpio.output.assert_has_calls([call(RELAY_PIN, mock_gpio.HIGH), call(RELAY_PIN, mock_gpio.LOW)])
-
 
     @patch('main.GPIO')
     def test_set_up(self, mock_gpio):
@@ -81,7 +82,6 @@ class AlarmTest(TestCase):
             call(LED_PIN, mock_gpio.OUT, initial=mock_gpio.LOW)
         ])
 
-
     @patch('main.flash')
     @patch('main.GPIO')
     @patch('main.time')
@@ -93,21 +93,22 @@ class AlarmTest(TestCase):
         mock_flash.assert_called_with(FAST_FLASH_TIME, ARM_TIME)
         mock_gpio.output.assert_called_with(LED_PIN, mock_gpio.HIGH)
 
-
     @patch('main.GPIO')
     def test_monitor(self, mock_gpio):
         """
-        Test for `monitor`. The test will set the alarm 3 times. A KeyboardInterrupt is received during the 4th iteration.
+        Test for `monitor`. The test will set the alarm 3 times. A KeyboardInterrupt
+        is received during the 4th iteration.
         """
-        with patch('main.detect_mouse_movement') as mock_detect_mouse_movement, patch('main.set_alarm') as mock_set_alarm:
+        with (patch('main.detect_switch_trigger') as mock_detect_switch_trigger,
+              patch('main.set_alarm') as mock_set_alarm):
             def detect_mouse_movement_side_effect():
-                nonlocal mock_detect_mouse_movement
-                if mock_detect_mouse_movement.call_count >= 4:
+                nonlocal mock_detect_switch_trigger
+                if mock_detect_switch_trigger.call_count >= 4:
                     raise KeyboardInterrupt
 
-            mock_detect_mouse_movement.side_effect = detect_mouse_movement_side_effect
+            mock_detect_switch_trigger.side_effect = detect_mouse_movement_side_effect
             monitor()
-            assert mock_detect_mouse_movement.call_count == 4
+            assert mock_detect_switch_trigger.call_count == 4
             assert mock_set_alarm.call_count == 3
             mock_gpio.output.assert_has_calls([call(RELAY_PIN, mock_gpio.LOW), call(LED_PIN, mock_gpio.LOW)])
             mock_gpio.cleanup.assert_called()
@@ -130,7 +131,6 @@ class AlarmTest(TestCase):
         mock_time.sleep.assert_has_calls([call(FAST_FLASH_TIME)] * 20)
         mock_gpio.output.assert_has_calls([call(LED_PIN, mock_gpio.HIGH), call(LED_PIN, mock_gpio.LOW)] * 10)
         mock_cleanup.assert_called()
-
 
     @patch('main.clean_up')
     @patch('main.GPIO')
@@ -248,7 +248,13 @@ class ControllerTestCase(TestCase):
     @patch('controller.start_service')
     @patch('controller.time')
     @patch('controller.clean_up')
-    def test_control_1(self, mock_clean_up, mock_time, mock_start_service, mock_alarm_service_running, mock_gpio) -> None:
+    def test_control_1(
+            self,
+            mock_clean_up,
+            mock_time,
+            mock_start_service,
+            mock_alarm_service_running,
+            mock_gpio) -> None:
         """
         Test for `control` scenario 1.
 
@@ -276,7 +282,13 @@ class ControllerTestCase(TestCase):
     @patch('controller.stop_service')
     @patch('controller.time')
     @patch('controller.clean_up')
-    def test_control_2(self, mock_clean_up, mock_time, mock_stop_service, mock_alarm_service_running, mock_gpio) -> None:
+    def test_control_2(
+            self,
+            mock_clean_up,
+            mock_time,
+            mock_stop_service,
+            mock_alarm_service_running,
+            mock_gpio) -> None:
         """
         Test for `control` scenario 2.
 

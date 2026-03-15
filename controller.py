@@ -103,7 +103,6 @@ def control() -> None:
             break
 
 
-
 def alarm_service_running() -> bool:
     """
     Check if alarm service is running

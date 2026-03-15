@@ -6,7 +6,6 @@ import logging
 import signal
 import time
 
-from evdev import InputDevice
 try:
     from RPi import GPIO
 except (RuntimeError, ModuleNotFoundError):
@@ -19,9 +18,10 @@ ALARM_DURATION = 5  # seconds
 ALARM_SNOOZE = 1  # seconds
 FAST_FLASH_TIME = 0.25  # seconds
 SLOW_FLASH_TIME = 0.65  # seconds
-ARM_TIME = 30  # seconds
+ARM_TIME = 1  # seconds
 RELAY_PIN = 13
 LED_PIN = 11
+SWITCH_PIN = 19
 
 logger = logging.getLogger('alarm')
 logger.addHandler(journal.JournalHandler())
@@ -51,22 +51,18 @@ def flash(interval: float, duration: int | None = None) -> None:
             break
 
 
-def detect_mouse_movement() -> None:
+def detect_switch_trigger() -> None:
     """
-    Detect a mouse movement. This function blocks until an event is received
+    Detect the switch being triggered. This function blocks until an event is received
 
     :return:
     """
-    try:
-        dev = InputDevice('/dev/input/by-id/usb-1bcf_USB_Optical_Mouse-event-mouse')
-    except FileNotFoundError:
-        logger.error('No input device')
-        flash(SLOW_FLASH_TIME)
-        return
-    for event in dev.read_loop():
-        logger.info('Detected movement')
-        if event.value != 0:
-            break
+    while True:
+        if GPIO.input(SWITCH_PIN) == GPIO.LOW:
+            # Ground on switch detected. Return
+            logger.info('Switch triggered')
+            return
+        time.sleep(0.1)
 
 
 def set_alarm() -> None:
@@ -95,6 +91,8 @@ def set_up() -> None:
     GPIO.setmode(GPIO.BOARD)
     GPIO.setup(RELAY_PIN, GPIO.OUT, initial=GPIO.LOW)
     GPIO.setup(LED_PIN, GPIO.OUT, initial=GPIO.LOW)
+    GPIO.setup(SWITCH_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+
 
 def arm() -> None:
     """
@@ -119,6 +117,7 @@ def clean_up() -> None:
     GPIO.cleanup()
     logger.debug('Cleaning up GPIO outputs')
 
+
 def monitor() -> None:
     """
     Monitor for mouse event. The function is blocking until a KeyboardInterrupt is raised. Then it will clean up the
@@ -128,7 +127,7 @@ def monitor() -> None:
     """
     while True:
         try:
-            detect_mouse_movement()
+            detect_switch_trigger()
             set_alarm()
         except KeyboardInterrupt:
             logger.info('Caught CTRL-C')
