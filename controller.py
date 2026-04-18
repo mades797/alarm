@@ -16,7 +16,7 @@ from systemd import journal
 from common import get_logging_level, handle_termination
 
 
-ALARM_CONTROL_PIN = 15
+ALARM_CONTROL_PIN = 13
 
 logger = logging.getLogger('alarm-controller')
 logger.addHandler(journal.JournalHandler())

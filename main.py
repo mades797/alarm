@@ -18,10 +18,10 @@ ALARM_DURATION = 5  # seconds
 ALARM_SNOOZE = 1  # seconds
 FAST_FLASH_TIME = 0.25  # seconds
 SLOW_FLASH_TIME = 0.65  # seconds
-ARM_TIME = 1  # seconds
-RELAY_PIN = 13
+ARM_TIME = 20  # seconds
+RELAY_PIN = 8
 LED_PIN = 11
-SWITCH_PIN = 19
+SWITCH_PIN = 37
 
 logger = logging.getLogger('alarm')
 logger.addHandler(journal.JournalHandler())
