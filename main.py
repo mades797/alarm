@@ -14,7 +14,7 @@ from systemd import journal
 
 from common import get_logging_level, handle_termination
 
-ALARM_DURATION = 5  # seconds
+ALARM_DURATION = 3  # seconds
 ALARM_SNOOZE = 1  # seconds
 FAST_FLASH_TIME = 0.25  # seconds
 SLOW_FLASH_TIME = 0.65  # seconds

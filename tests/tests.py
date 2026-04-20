@@ -18,6 +18,7 @@ from controller import (
     start_service,
     stop_service,
     ALARM_CONTROL_PIN,
+    ALARM_CONTROLLER_SLEEP_TIME,
 )
 from main import (
     _handle_termination as main_handle_termination,
@@ -273,7 +274,7 @@ class ControllerTestCase(TestCase):
         mock_gpio.input.side_effect = [mock_gpio.LOW] * 5 + [mock_gpio.HIGH] * 6 + [KeyboardInterrupt]
         mock_alarm_service_running.return_value = False
         control()
-        mock_time.sleep.assert_has_calls([call(5)] * 5 + [call(0.25)] * 5)
+        mock_time.sleep.assert_has_calls([call(ALARM_CONTROLLER_SLEEP_TIME)] * 5 + [call(0.25)] * 5)
         mock_start_service.assert_called_once()
         mock_clean_up.assert_called_once()
 
@@ -307,7 +308,7 @@ class ControllerTestCase(TestCase):
         mock_gpio.input.side_effect = [mock_gpio.HIGH] * 5 + [mock_gpio.LOW] * 6 + [KeyboardInterrupt]
         mock_alarm_service_running.return_value = True
         control()
-        mock_time.sleep.assert_has_calls([call(0.25)] * 5 + [call(5)] * 5)
+        mock_time.sleep.assert_has_calls([call(0.25)] * 5 + [call(ALARM_CONTROLLER_SLEEP_TIME)] * 5)
         mock_stop_service.assert_called_once()
         mock_clean_up.assert_called_once()
 

@@ -17,6 +17,7 @@ from common import get_logging_level, handle_termination
 
 
 ALARM_CONTROL_PIN = 13
+ALARM_CONTROLLER_SLEEP_TIME = 3  # seconds
 
 logger = logging.getLogger('alarm-controller')
 logger.addHandler(journal.JournalHandler())
@@ -84,7 +85,7 @@ def control() -> None:
             pin_state = GPIO.input(ALARM_CONTROL_PIN)
             if pin_state == GPIO.LOW and not service_running:
                 # Idle
-                time.sleep(5)
+                time.sleep(ALARM_CONTROLLER_SLEEP_TIME)
             elif pin_state == GPIO.LOW and service_running:
                 # Stop signal
                 logger.info('Received signal to stop alarm service')
